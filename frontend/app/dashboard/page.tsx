@@ -15,8 +15,8 @@ import { useRepositories } from '@/lib/hooks/useRepositories';
 import { useToggleRepository } from '@/lib/hooks/useToggleRepository';
 
 export default function DashboardPage() {
-  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useStats();
-  const { data: reviews = [], isLoading: reviewsLoading, refetch: refetchReviews } = useReviews({ limit: 10 });
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStatsAndReviews } = useStats();
+  const { data: reviews = [], isLoading: reviewsLoading } = useReviews({ limit: 10 });
   const { data: repositories = [], isLoading: reposLoading, refetch: refetchRepos } = useRepositories();
   const { mutate: toggleRepo } = useToggleRepository();
 
@@ -24,8 +24,7 @@ export default function DashboardPage() {
   const error = statsError instanceof Error ? statsError.message : null;
 
   function handleRefresh() {
-    refetchStats();
-    refetchReviews();
+    refetchStatsAndReviews(); // Single refetch for both stats and reviews
     refetchRepos();
   }
 

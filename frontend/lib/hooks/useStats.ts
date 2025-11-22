@@ -1,19 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
-import { ReviewStats } from '@/types';
+import { useStatsAndReviews } from './useStatsAndReviews';
 
 /**
  * Hook to fetch dashboard statistics
+ * Derives from shared useStatsAndReviews hook to prevent duplicate API calls
  * Cached for 5 minutes
  */
 export function useStats() {
-  return useQuery({
-    queryKey: ['stats'],
-    queryFn: async (): Promise<ReviewStats> => {
-      const res = await fetch('/api/review/stats');
-      if (!res.ok) throw new Error('Failed to fetch stats');
-      const data = await res.json();
-      return data.stats;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  const { data, isLoading, error, refetch } = useStatsAndReviews();
+
+  return {
+    data: data?.stats,
+    isLoading,
+    error,
+    refetch,
+  };
 }

@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useStatsAndReviews } from './useStatsAndReviews';
 import { Review } from '@/types';
 
 interface UseReviewsOptions {
@@ -8,17 +9,34 @@ interface UseReviewsOptions {
 
 /**
  * Hook to fetch reviews list
- * Cached for 2 minutes
+ * Derives from shared useStatsAndReviews hook to prevent duplicate API calls
+ * Supports client-side filtering by limit and status
+ * Cached for 5 minutes
  */
 export function useReviews(options: UseReviewsOptions = {}) {
-  return useQuery({
-    queryKey: ['reviews', options],
-    queryFn: async (): Promise<Review[]> => {
-      const res = await fetch('/api/review/stats');
-      if (!res.ok) throw new Error('Failed to fetch reviews');
-      const data = await res.json();
-      return data.recent_reviews || [];
-    },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  });
+  const { data, isLoading, error, refetch } = useStatsAndReviews();
+
+  // Client-side filtering to avoid extra API calls
+  const filteredReviews = useMemo(() => {
+    let reviews = data?.recent_reviews || [];
+
+    // Filter by status if provided
+    if (options.status) {
+      reviews = reviews.filter((r) => r.status === options.status);
+    }
+
+    // Limit results if provided
+    if (options.limit) {
+      reviews = reviews.slice(0, options.limit);
+    }
+
+    return reviews;
+  }, [data?.recent_reviews, options.status, options.limit]);
+
+  return {
+    data: filteredReviews,
+    isLoading,
+    error,
+    refetch,
+  };
 }

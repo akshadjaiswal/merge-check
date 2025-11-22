@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { DashboardNav } from '@/components/layout/dashboard-nav';
 import { Footer } from '@/components/layout/footer';
 import { Card } from '@/components/ui/card';
@@ -9,30 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Github, Shield, AlertTriangle } from 'lucide-react';
+import { useStats } from '@/lib/hooks/useStats';
 
 export default function SettingsPage() {
-  const [user, setUser] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  async function loadUserData() {
-    try {
-      setIsLoading(true);
-      const res = await fetch('/api/review/stats');
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data.stats);
-      }
-    } catch (error) {
-      console.error('Failed to load user data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  // Use React Query hook instead of raw fetch - utilizes shared cache
+  const { data: stats, isLoading } = useStats();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-cyan-50/30 to-white flex flex-col">
