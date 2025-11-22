@@ -147,8 +147,8 @@ export function optimizeBatches(batches: FileBatch[]): FileBatch[] {
       continue;
     }
 
-    const combinedFiles = currentBatch.files.length + batch.files.length;
-    const combinedTokens = currentBatch.estimated_tokens + batch.estimated_tokens;
+    const combinedFiles: number = currentBatch.files.length + batch.files.length;
+    const combinedTokens: number = currentBatch.estimated_tokens + batch.estimated_tokens;
 
     // Merge if it doesn't exceed limits
     if (combinedFiles <= MAX_FILES_PER_BATCH && combinedTokens <= MAX_TOKENS_PER_BATCH) {
