@@ -200,14 +200,60 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
                 </TabsContent>
 
                 <TabsContent value="files">
-                  <div className="text-center py-12 text-slate-500">
-                    <p>File list would be displayed here</p>
-                  </div>
+                  {review.reviewed_files > 0 ? (
+                    <div className="space-y-2">
+                      {/* Get unique files from comments */}
+                      {Array.from(new Set(comments.map(c => c.file_path))).map((filePath) => {
+                        const fileIssues = comments.filter(c => c.file_path === filePath);
+                        const hasCritical = fileIssues.some(c => c.severity === 'critical');
+                        const hasWarning = fileIssues.some(c => c.severity === 'warning');
+
+                        return (
+                          <Card key={filePath} className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <FileCode className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                <code className="text-sm font-mono text-slate-700 truncate">
+                                  {filePath}
+                                </code>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {hasCritical && (
+                                  <Badge className="bg-rose-100 text-rose-700 border-rose-300 text-xs">
+                                    {fileIssues.filter(c => c.severity === 'critical').length} critical
+                                  </Badge>
+                                )}
+                                {hasWarning && (
+                                  <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-xs">
+                                    {fileIssues.filter(c => c.severity === 'warning').length} warning
+                                  </Badge>
+                                )}
+                                {!hasCritical && !hasWarning && (
+                                  <Badge className="bg-cyan-100 text-cyan-700 border-cyan-300 text-xs">
+                                    {fileIssues.length} suggestion{fileIssues.length !== 1 ? 's' : ''}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-slate-500">
+                      <FileCode className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                      <p className="text-lg font-medium">No files reviewed</p>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="skipped">
                   <div className="text-center py-12 text-slate-500">
-                    <p>Skipped files would be displayed here</p>
+                    <AlertCircle className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                    <p className="text-lg font-medium">Skipped Files: {review.skipped_files || 0}</p>
+                    <p className="text-sm mt-2">
+                      Files were skipped due to: large size, generated code, or unsupported file types
+                    </p>
                   </div>
                 </TabsContent>
               </Tabs>

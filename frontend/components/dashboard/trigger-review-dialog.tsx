@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,6 +25,7 @@ export function TriggerReviewDialog({ repoFullName }: TriggerReviewDialogProps) 
   const [open, setOpen] = useState(false);
   const [prNumber, setPrNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   async function handleTrigger() {
     if (!prNumber || isNaN(parseInt(prNumber))) {
@@ -49,17 +51,17 @@ export function TriggerReviewDialog({ repoFullName }: TriggerReviewDialogProps) 
       }
 
       toast.success(`Review triggered for PR #${prNumber}!`, {
-        description: 'Check the Reviews page in a few seconds',
+        description: 'Processing in background... Watch the Reviews page for updates',
+        duration: 5000,
       });
 
       // Reset and close
       setPrNumber('');
       setOpen(false);
 
-      // Refresh reviews after a delay
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      // Invalidate queries to refetch data (NO page reload!)
+      queryClient.invalidateQueries({ queryKey: ['stats-and-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['repositories'] });
     } catch (error) {
       console.error('Trigger error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to trigger review');
