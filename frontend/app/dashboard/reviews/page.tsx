@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DashboardNav } from '@/components/layout/dashboard-nav';
 import { Footer } from '@/components/layout/footer';
 import { ReviewTable } from '@/components/dashboard/review-table';
@@ -10,42 +10,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Search, RefreshCw } from 'lucide-react';
-import { Review } from '@/types';
+import { useReviews } from '@/lib/hooks/useReviews';
 
 export default function ReviewsPage() {
-  const [allReviews, setAllReviews] = useState<Review[]>([]);
-  const [filteredReviews, setFilteredReviews] = useState<Review[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadReviews();
-  }, []);
+  const { data: allReviews = [], isLoading, error, refetch } = useReviews();
 
-  useEffect(() => {
-    filterReviews();
-  }, [searchQuery, activeTab, allReviews]);
-
-  async function loadReviews() {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const res = await fetch('/api/review/stats');
-      if (!res.ok) throw new Error('Failed to load reviews');
-
-      const data = await res.json();
-      setAllReviews(data.recent_reviews || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load reviews');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  function filterReviews() {
+  // Filter reviews based on search and tab
+  const filteredReviews = useMemo(() => {
     let filtered = allReviews;
 
     // Filter by status
@@ -61,8 +35,16 @@ export default function ReviewsPage() {
       );
     }
 
-    setFilteredReviews(filtered);
-  }
+    return filtered;
+  }, [allReviews, activeTab, searchQuery]);
+
+  // Count reviews by status
+  const counts = useMemo(() => ({
+    all: allReviews.length,
+    completed: allReviews.filter(r => r.status === 'completed').length,
+    pending: allReviews.filter(r => r.status === 'pending').length,
+    failed: allReviews.filter(r => r.status === 'failed').length,
+  }), [allReviews]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-cyan-50/30 to-white flex flex-col">
@@ -78,7 +60,9 @@ export default function ReviewsPage() {
         {/* Error State */}
         {error && (
           <Alert className="mb-8 border-rose-200 bg-rose-50">
-            <AlertDescription className="text-rose-700">{error}</AlertDescription>
+            <AlertDescription className="text-rose-700">
+              {error instanceof Error ? error.message : 'Failed to load reviews'}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -96,7 +80,7 @@ export default function ReviewsPage() {
               />
             </div>
             <button
-              onClick={loadReviews}
+              onClick={() => refetch()}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               title="Refresh"
             >
@@ -110,16 +94,16 @@ export default function ReviewsPage() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
               <TabsTrigger value="all">
-                All ({allReviews.length})
+                All ({counts.all})
               </TabsTrigger>
               <TabsTrigger value="completed">
-                Completed ({allReviews.filter(r => r.status === 'completed').length})
+                Completed ({counts.completed})
               </TabsTrigger>
               <TabsTrigger value="pending">
-                Pending ({allReviews.filter(r => r.status === 'pending').length})
+                Pending ({counts.pending})
               </TabsTrigger>
               <TabsTrigger value="failed">
-                Failed ({allReviews.filter(r => r.status === 'failed').length})
+                Failed ({counts.failed})
               </TabsTrigger>
             </TabsList>
 

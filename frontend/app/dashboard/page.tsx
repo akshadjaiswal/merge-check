@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { DashboardNav } from '@/components/layout/dashboard-nav';
 import { Footer } from '@/components/layout/footer';
 import { StatsCard } from '@/components/dashboard/stats-card';
@@ -10,52 +9,24 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { GitPullRequest, Clock, Zap, TrendingUp, RefreshCw } from 'lucide-react';
-import { Review, ReviewStats } from '@/types';
+import { useStats } from '@/lib/hooks/useStats';
+import { useReviews } from '@/lib/hooks/useReviews';
+import { useRepositories } from '@/lib/hooks/useRepositories';
+import { useToggleRepository } from '@/lib/hooks/useToggleRepository';
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<ReviewStats | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [repositories, setRepositories] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useStats();
+  const { data: reviews = [], isLoading: reviewsLoading, refetch: refetchReviews } = useReviews({ limit: 10 });
+  const { data: repositories = [], isLoading: reposLoading, refetch: refetchRepos } = useRepositories();
+  const { mutate: toggleRepo } = useToggleRepository();
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  const isLoading = statsLoading || reviewsLoading || reposLoading;
+  const error = statsError instanceof Error ? statsError.message : null;
 
-  async function loadDashboardData() {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Load stats and reviews
-      const statsRes = await fetch('/api/review/stats');
-      if (!statsRes.ok) throw new Error('Failed to load stats');
-      const statsData = await statsRes.json();
-
-      setStats(statsData.stats);
-      setReviews(statsData.recent_reviews);
-
-      // Load repositories
-      const reposRes = await fetch('/api/repositories');
-      if (!reposRes.ok) throw new Error('Failed to load repositories');
-      const reposData = await reposRes.json();
-
-      setRepositories(reposData.repositories);
-    } catch (err) {
-      console.error('Dashboard error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function handleRepoToggle(repoId: string, isActive: boolean) {
-    await fetch(`/api/repositories/${repoId}/toggle`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: isActive }),
-    });
+  function handleRefresh() {
+    refetchStats();
+    refetchReviews();
+    refetchRepos();
   }
 
   return (
@@ -119,7 +90,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-slate-900">Recent Reviews</h2>
             <button
-              onClick={loadDashboardData}
+              onClick={handleRefresh}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               title="Refresh"
             >
@@ -127,7 +98,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {isLoading ? (
+          {reviewsLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-16" />
@@ -142,7 +113,7 @@ export default function DashboardPage() {
         <Card className="p-6">
           <h2 className="text-2xl font-bold text-slate-900 mb-6">Repositories</h2>
 
-          {isLoading ? (
+          {reposLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[...Array(6)].map((_, i) => (
                 <Skeleton key={i} className="h-24" />
@@ -154,7 +125,7 @@ export default function DashboardPage() {
                 <RepoToggle
                   key={repo.github_repo_id}
                   repository={repo}
-                  onToggle={handleRepoToggle}
+                  onToggle={(isActive) => toggleRepo({ repository: repo, isActive })}
                 />
               ))}
             </div>

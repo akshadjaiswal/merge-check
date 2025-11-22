@@ -3,41 +3,27 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Github, Lock } from 'lucide-react';
+import { Github, Lock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface Repository {
-  id?: string;
-  github_repo_id: number;
-  full_name: string;
-  name: string;
-  private: boolean;
-  description?: string;
-  is_active: boolean;
-  is_tracked: boolean;
-}
+import { Repository } from '@/lib/hooks/useRepositories';
 
 interface RepoToggleProps {
   repository: Repository;
-  onToggle: (repoId: string, isActive: boolean) => Promise<void>;
+  onToggle: (isActive: boolean) => void;
 }
 
 export function RepoToggle({ repository, onToggle }: RepoToggleProps) {
-  const [isActive, setIsActive] = useState(repository.is_active);
   const [isLoading, setIsLoading] = useState(false);
+  const isActive = repository.is_active;
 
   const handleToggle = async () => {
-    if (!repository.id) return;
-
     setIsLoading(true);
     try {
       const newState = !isActive;
-      await onToggle(repository.id, newState);
-      setIsActive(newState);
-    } catch (error) {
-      console.error('Failed to toggle repository:', error);
+      onToggle(newState);
     } finally {
-      setIsLoading(false);
+      // Keep loading state for a bit to show feedback
+      setTimeout(() => setIsLoading(false), 500);
     }
   };
 
@@ -78,6 +64,11 @@ export function RepoToggle({ repository, onToggle }: RepoToggleProps) {
                   Inactive
                 </Badge>
               )}
+              {!repository.is_tracked && (
+                <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                  Not tracked yet
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -89,13 +80,20 @@ export function RepoToggle({ repository, onToggle }: RepoToggleProps) {
             'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
             isActive ? 'bg-cyan-600' : 'bg-slate-200'
           )}
+          title={isActive ? 'Click to deactivate' : 'Click to activate'}
         >
-          <span
-            className={cn(
-              'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-              isActive ? 'translate-x-5' : 'translate-x-0'
-            )}
-          />
+          {isLoading ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+            </div>
+          ) : (
+            <span
+              className={cn(
+                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                isActive ? 'translate-x-5' : 'translate-x-0'
+              )}
+            />
+          )}
         </button>
       </div>
     </Card>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { use } from 'react';
 import { DashboardNav } from '@/components/layout/dashboard-nav';
 import { Footer } from '@/components/layout/footer';
@@ -10,39 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeverityBadge } from '@/components/dashboard/severity-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ExternalLink, Clock, Zap, FileCode, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
-import { Review, Comment } from '@/types';
+import { Clock, Zap, FileCode, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
+import { useReview } from '@/lib/hooks/useReview';
+import { Comment } from '@/types';
 
 export default function ReviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const [review, setReview] = useState<Review | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadReviewData();
-  }, [resolvedParams.id]);
-
-  async function loadReviewData() {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // In a real app, you'd have separate API routes for this
-      // For now, we'll load from the review object directly
-      const res = await fetch(`/api/review/${resolvedParams.id}`);
-      if (!res.ok) throw new Error('Review not found');
-
-      const data = await res.json();
-      setReview(data.review);
-      setComments(data.comments || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load review');
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const { data, isLoading, error } = useReview(resolvedParams.id);
 
   if (error) {
     return (
@@ -50,13 +23,18 @@ export default function ReviewDetailPage({ params }: { params: Promise<{ id: str
         <DashboardNav />
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Alert className="border-rose-200 bg-rose-50">
-            <AlertDescription className="text-rose-700">{error}</AlertDescription>
+            <AlertDescription className="text-rose-700">
+              {error instanceof Error ? error.message : 'Failed to load review'}
+            </AlertDescription>
           </Alert>
         </main>
         <Footer />
       </div>
     );
   }
+
+  const review = data?.review;
+  const comments = data?.comments || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-cyan-50/30 to-white flex flex-col">
