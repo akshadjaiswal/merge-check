@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Github, Lock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Repository } from '@/lib/hooks/useRepositories';
+import { TriggerReviewDialog } from './trigger-review-dialog';
 
 interface RepoToggleProps {
   repository: Repository;
@@ -54,7 +55,7 @@ export function RepoToggle({ repository, onToggle }: RepoToggleProps) {
               </p>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {isActive ? (
                 <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300">
                   Active
@@ -68,6 +69,9 @@ export function RepoToggle({ repository, onToggle }: RepoToggleProps) {
                 <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
                   Not tracked yet
                 </Badge>
+              )}
+              {isActive && repository.is_tracked && (
+                <TriggerReviewDialog repoFullName={repository.full_name} />
               )}
             </div>
           </div>

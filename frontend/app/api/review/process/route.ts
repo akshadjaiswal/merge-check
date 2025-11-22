@@ -34,12 +34,16 @@ export async function POST(request: NextRequest) {
       repo,
       prNumber,
       headSha,
+      userToken, // Optional: for manual triggers
     } = await request.json();
 
     console.log(`🔍 Starting review ${reviewId} for PR #${prNumber} in ${owner}/${repo}`);
 
     // Step 1: Initialize GitHub client
-    const githubClient = await GitHubAPIClient.fromInstallation(installationId);
+    // For manual triggers (installationId = 0), use userToken instead
+    const githubClient = installationId && installationId > 0
+      ? await GitHubAPIClient.fromInstallation(installationId)
+      : GitHubAPIClient.fromUserToken(userToken);
 
     // Step 2: Fetch PR files
     console.log('📁 Fetching PR files...');
@@ -85,9 +89,13 @@ export async function POST(request: NextRequest) {
     const quickCheckIssues = runQuickChecksOnFiles(sortedFiles);
     console.log(`Quick checks found ${quickCheckIssues.length} issues`);
 
-    // Post quick check issues immediately
+    // Post quick check issues immediately (skip if posting fails - e.g., for manual triggers)
     if (quickCheckIssues.length > 0) {
-      await postQuickCheckIssues(githubClient, owner, repo, prNumber, headSha, quickCheckIssues);
+      try {
+        await postQuickCheckIssues(githubClient, owner, repo, prNumber, headSha, quickCheckIssues);
+      } catch (error) {
+        console.warn('Failed to post quick check issues to GitHub (will save to DB):', error);
+      }
     }
 
     // Step 6: Check cache
@@ -151,9 +159,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 Total issues found: ${sortedIssues.length}`);
 
-    // Step 10: Post inline comments
+    // Step 10: Post inline comments (skip if fails - comments are in DB anyway)
     console.log('💬 Posting inline comments...');
-    await postInlineComments(githubClient, owner, repo, prNumber, headSha, sortedIssues);
+    try {
+      await postInlineComments(githubClient, owner, repo, prNumber, headSha, sortedIssues);
+    } catch (error) {
+      console.warn('Failed to post inline comments to GitHub (will save to DB):', error);
+    }
 
     // Step 11: Save comments to database
     await createComments(
@@ -169,7 +181,7 @@ export async function POST(request: NextRequest) {
       }))
     );
 
-    // Step 12: Post summary comment
+    // Step 12: Post summary comment (this usually works even with user tokens)
     const { critical, warning, suggestion } = groupIssuesBySeverity(sortedIssues);
     const summaryComment = buildSummaryComment({
       total_files: allFiles.length,
@@ -187,7 +199,11 @@ export async function POST(request: NextRequest) {
       suggestion_issues: suggestion.slice(0, 3).map(i => ({ file: i.file, line: i.line, message: i.message })),
     });
 
-    await githubClient.postPRComment(owner, repo, prNumber, summaryComment);
+    try {
+      await githubClient.postPRComment(owner, repo, prNumber, summaryComment);
+    } catch (error) {
+      console.warn('Failed to post summary comment to GitHub:', error);
+    }
 
     // Step 13: Complete review in database
     await completeReview(reviewId, {

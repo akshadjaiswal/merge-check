@@ -137,6 +137,19 @@ export async function getUserRepositories(userId: string): Promise<Repository[]>
   return data;
 }
 
+export async function getRepositoryByFullName(fullName: string): Promise<Repository | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('mergecheck_repositories')
+    .select('*')
+    .eq('full_name', fullName)
+    .single();
+
+  if (error) return null;
+  return data;
+}
+
 export async function toggleRepositoryActive(repoId: string, isActive: boolean): Promise<void> {
   const supabase = await createClient();
 
